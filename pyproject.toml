@@ -24,16 +24,6 @@ dev = [
   "pandas>=2.0",
   "matplotlib>=3.8",
 ]
-streamlit = [
-  "streamlit>=1.30",
-  "pandas>=2.0",
-]
-notebook = [
-  "jupyter>=1.0",
-  "pandas>=2.0",
-  "matplotlib>=3.8",
-]
-
 [project.scripts]
 kvcf = "kvcf.__main__:main"
 

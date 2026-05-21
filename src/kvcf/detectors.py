@@ -287,12 +287,22 @@ class CollateralCascade:
                     )
                     bucket["liquidatable_debt_usd"] += debt_raw
 
-        # Compute idle (available) liquidity per reserve in USD for the gap
+        # Compute idle (available) liquidity per reserve in USD for the gap.
+        # Defensive: an obligation can reference a reserve that's been
+        # delisted between snapshot dumps; skip those buckets rather than
+        # raising KeyError. The bucket is left with available_liquidity_usd
+        # = 0 so the gap == liquidatable_debt_usd (worst case).
         liquidity_gap_usd = 0.0
         for addr, bucket in per_reserve_loss.items():
-            r = reserves[addr]
-            tokens = r.available_amount / (10 ** r.mint_decimals)
-            available_usd = tokens * r.price_usd
+            reserve = reserves.get(addr)
+            if reserve is None:
+                bucket["available_liquidity_usd"] = 0.0
+                bucket["liquidity_gap_usd"] = bucket["liquidatable_debt_usd"]
+                bucket["reserve_missing"] = 1.0
+                liquidity_gap_usd += bucket["liquidatable_debt_usd"]
+                continue
+            tokens = reserve.available_amount / (10 ** reserve.mint_decimals)
+            available_usd = tokens * reserve.price_usd
             bucket["available_liquidity_usd"] = available_usd
             gap = max(0.0, bucket["liquidatable_debt_usd"] - available_usd)
             bucket["liquidity_gap_usd"] = gap

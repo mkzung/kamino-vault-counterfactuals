@@ -85,10 +85,13 @@ def fetch_market_snapshot(
           getMultipleAccountsInfo call against the market's reserve list.
 
     For a working end-to-end demo, use `load_fixture("data/fixtures/main_market_2026-05-21.json")`
-    which contains a real Kamino state captured for the README and tests.
+    which ships a SYNTHETIC Kamino-shape snapshot (see CHANGELOG §0.1.1 —
+    real mainnet PDAs were intentionally replaced with `Synthetic*` placeholders).
 
     Args:
-      market_address: Kamino market PDA (default = Main Market).
+      market_address: Kamino market PDA (required positional — no default;
+        the prior baked-in mainnet address was removed in v0.1.1 to prevent
+        accidental real-market hits during demos).
       rpc_url: Solana RPC HTTP endpoint.
       timeout_s: HTTP timeout per request.
       include_obligations: if True, also fetch up to `obligation_limit`

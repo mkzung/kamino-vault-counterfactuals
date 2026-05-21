@@ -148,3 +148,77 @@ def test_cli_diff(tmp_path, capsys):
     assert rc == 0
     assert "Slot delta: 100" in out
     assert "Reserves:" in out
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Round-4 regression tests: as_json must be strict-parseable; detectors
+# must not raise KeyError on missing reserves.
+# ──────────────────────────────────────────────────────────────────────
+
+
+def test_as_json_emits_strict_parseable_when_metric_is_inf():
+    """`json.dumps` writes literal `Infinity` by default, which is invalid
+    JSON. The Round-4 fix sanitizes ±inf/NaN to string sentinels so any
+    standard parser (browsers, jq, Go, Rust) can round-trip the output.
+    """
+    from kvcf.detectors import DetectorResult
+
+    results = [
+        DetectorResult(
+            name="DepositorExitShock",
+            headline_metric=float("inf"),
+            headline_unit="fraction_or_inf",
+            interpretation="Reserve fully drained — utilization undefined.",
+            evidence={
+                "post_util": float("inf"),
+                "nan_value": float("nan"),
+                "neg_inf_value": float("-inf"),
+                "normal_value": 0.5,
+            },
+        )
+    ]
+    payload = as_json(results)
+    # The string `Infinity` (Python's default) is NOT valid JSON.
+    assert "Infinity" not in payload
+    assert "NaN" not in payload
+    # Standard json.loads must round-trip cleanly:
+    parsed = json.loads(payload)
+    assert parsed[0]["headline_metric"] == "inf"
+    assert parsed[0]["evidence"]["post_util"] == "inf"
+    assert parsed[0]["evidence"]["nan_value"] == "nan"
+    assert parsed[0]["evidence"]["neg_inf_value"] == "-inf"
+    assert parsed[0]["evidence"]["normal_value"] == 0.5
+
+
+def test_collateral_cascade_skips_missing_reserve_gracefully():
+    """An obligation can reference a reserve that's been delisted between
+    snapshot dumps. The detector should treat that bucket's available
+    liquidity as 0 (worst case) rather than raise KeyError.
+    """
+    from kvcf.detectors import CollateralCascade
+    from kvcf.synthetic import make_market_snapshot
+
+    # Take a synthetic underwater-heavy snapshot, then rewrite one
+    # obligation's top-collateral deposit to point at a delisted reserve.
+    snap = make_market_snapshot(n_healthy=0, n_at_risk=0, n_underwater=3)
+    old_oblig = snap.obligations[0]
+    new_deposits = [
+        old_oblig.deposits[0].model_copy(
+            update={"reserve_address": "MISSING_DELISTED_1111111111"}
+        )
+    ] + list(old_oblig.deposits[1:])
+    new_oblig = old_oblig.model_copy(update={"deposits": new_deposits})
+    new_snap = snap.model_copy(
+        update={"obligations": [new_oblig] + list(snap.obligations[1:])}
+    )
+
+    # Must NOT raise KeyError (pre-Round-4 behavior)
+    result = CollateralCascade(shock_pct=-0.5).run(new_snap)
+    assert result.name == "CollateralCascade"
+    per_reserve = result.evidence.get("per_reserve", {})
+    # If the missing reserve was attributed (it should be, given it's the
+    # only deposit on that obligation), the bucket must be flagged.
+    if "MISSING_DELISTED_1111111111" in per_reserve:
+        b = per_reserve["MISSING_DELISTED_1111111111"]
+        assert b.get("reserve_missing") == 1.0
+        assert b["available_liquidity_usd"] == 0.0

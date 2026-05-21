@@ -43,9 +43,7 @@ The Solana account model is different from Ethereum: reserves are PDAs holding b
 pip install -e ".[dev]"
 ```
 
-Python ≥ 3.10 required. Optional extras:
-- `kvcf[streamlit]` — live dashboard
-- `kvcf[notebook]` — Jupyter examples
+Python ≥ 3.10 required. Optional extras: `kvcf[dev]` for ruff + mypy + pytest.
 
 ---
 

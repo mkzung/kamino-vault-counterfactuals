@@ -7,6 +7,7 @@ produce a curator-readable output.
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import asdict
 from typing import Any
 
@@ -14,15 +15,37 @@ from .detectors import DetectorResult
 
 
 def as_json(results: list[DetectorResult], *, indent: int = 2) -> str:
-    """Render the detector results as a JSON string."""
-    out = [asdict(r) for r in results]
-    return json.dumps(out, indent=indent, default=_json_default)
+    """Render the detector results as a JSON string.
+
+    Replaces non-finite floats (±inf, NaN) with the strings "inf"/"-inf"/"nan"
+    BEFORE serialization. Standard `json.dumps` emits literal `Infinity`/`NaN`
+    tokens which are not valid JSON — `JSON.parse` (browsers), `jq`, Go's
+    `encoding/json`, and Rust's `serde_json` all reject them. We sanitize
+    the whole tree so downstream consumers can always `JSON.parse(...)` the
+    output. `_json_default` remains as a safety net for non-float oddities
+    (e.g., int dict keys).
+    """
+    out = _sanitize([asdict(r) for r in results])
+    return json.dumps(out, indent=indent, default=_json_default, allow_nan=False)
+
+
+def _sanitize(value: Any) -> Any:
+    """Recursively replace non-finite floats with string sentinels."""
+    if isinstance(value, float):
+        if math.isnan(value):
+            return "nan"
+        if math.isinf(value):
+            return "inf" if value > 0 else "-inf"
+        return value
+    if isinstance(value, dict):
+        return {k: _sanitize(v) for k, v in value.items()}
+    if isinstance(value, list | tuple):
+        return [_sanitize(v) for v in value]
+    return value
 
 
 def _json_default(o: Any) -> Any:
     """Fallback for non-serializable objects (e.g., dict keys that are ints)."""
-    if isinstance(o, float) and o == float("inf"):
-        return "inf"
     raise TypeError(f"Object of type {type(o)} is not JSON serializable")
 
 
