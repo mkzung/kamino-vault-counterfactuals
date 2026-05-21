@@ -54,7 +54,7 @@ Initial release.
 
 - Standalone HTML report renderer (Inca-style severity-coded design).
 
-- 75 pytest tests, ruff + mypy CI on Py 3.10 / 3.11 / 3.12 on Ubuntu + macOS.
+- 80 pytest tests, ruff + mypy `--strict` CI on Py 3.10 / 3.11 / 3.12 on Ubuntu + macOS.
 
 ### Architecture
 
