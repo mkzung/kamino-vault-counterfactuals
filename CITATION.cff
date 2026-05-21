@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "kamino-vault-counterfactuals"
+abstract: >-
+  Historical replay + counterfactual stress testing for Kamino Lend reserves
+  and obligations on Solana. Six pure-function detectors (oracle-staleness,
+  collateral-cascade, depositor-exit-shock, utilization-band-breach,
+  liquidation-latency, LTV-distribution-stress). Mirror of
+  morpho-vault-counterfactuals adapted for the Solana account model.
+authors:
+  - family-names: Gorbuk
+    given-names: Max
+    affiliation: "Stanford GSB Venture Capital Initiative"
+repository-code: "https://github.com/mkzung/kamino-vault-counterfactuals"
+license: MIT
+version: 0.1.0
+date-released: 2026-05-21
+keywords:
+  - DeFi
+  - Solana
+  - Kamino
+  - lending
+  - risk
+  - counterfactual
+  - stress-testing

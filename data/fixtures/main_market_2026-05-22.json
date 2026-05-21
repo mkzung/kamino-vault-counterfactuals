@@ -1,0 +1,247 @@
+{
+  "market_address": "7u3HeHxYDLhnCoErrtycNokbQYbWGzLs6JSDqGAv5K1z",
+  "market_name": "Kamino Main Market (synthetic)",
+  "slot": 250000500,
+  "timestamp": 1716000000,
+  "reserves": [
+    {
+      "reserve_address": "d4A2prbA2whesmvHaL88BH6Ewn5N4bTSU2Ze8P6Bc4Q",
+      "slot": 250000500,
+      "timestamp": 1716000000,
+      "mint": "fab390771afdf36d58a0c02787b74212d764c324ed8",
+      "symbol": "SOL",
+      "mint_decimals": 9,
+      "available_amount": 80000000000000,
+      "borrowed_amount": 40000000000000,
+      "accumulated_protocol_fees": 0,
+      "accumulated_referrer_fees": 0,
+      "loan_to_value_pct": 70,
+      "liquidation_threshold_pct": 75,
+      "liquidation_bonus_bps": 500,
+      "borrow_factor_bps": 10000,
+      "max_liquidatable_close_factor_pct": 20,
+      "deposit_limit": 0,
+      "borrow_limit": 0,
+      "oracle_price_value": 15000000000,
+      "oracle_price_exp": -8,
+      "oracle_last_update_slot": 250000500,
+      "oracle_source": "pyth"
+    },
+    {
+      "reserve_address": "Ga4rZytCpq1unD4DbEJ5bkHeUz9g3oh9AAFEi6vSauXp",
+      "slot": 250000500,
+      "timestamp": 1716000000,
+      "mint": "0d3aeb076dbec3a0df0944fda46f132ea9ce8b234b6",
+      "symbol": "USDC",
+      "mint_decimals": 6,
+      "available_amount": 15000000000000,
+      "borrowed_amount": 8000000000000,
+      "accumulated_protocol_fees": 0,
+      "accumulated_referrer_fees": 0,
+      "loan_to_value_pct": 85,
+      "liquidation_threshold_pct": 88,
+      "liquidation_bonus_bps": 300,
+      "borrow_factor_bps": 10000,
+      "max_liquidatable_close_factor_pct": 20,
+      "deposit_limit": 0,
+      "borrow_limit": 0,
+      "oracle_price_value": 100000000,
+      "oracle_price_exp": -8,
+      "oracle_last_update_slot": 250000500,
+      "oracle_source": "pyth"
+    },
+    {
+      "reserve_address": "DdTmCCjv7zHRD1hJv3E8bpnSEQBzdKkzB1j9ApXX5QrQ",
+      "slot": 250000500,
+      "timestamp": 1716000000,
+      "mint": "a5a1ed73d2a6c4374e830c3eedead69743bfd440801",
+      "symbol": "JLP",
+      "mint_decimals": 6,
+      "available_amount": 6000000000000,
+      "borrowed_amount": 2500000000000,
+      "accumulated_protocol_fees": 0,
+      "accumulated_referrer_fees": 0,
+      "loan_to_value_pct": 55,
+      "liquidation_threshold_pct": 60,
+      "liquidation_bonus_bps": 700,
+      "borrow_factor_bps": 10000,
+      "max_liquidatable_close_factor_pct": 20,
+      "deposit_limit": 0,
+      "borrow_limit": 0,
+      "oracle_price_value": 450000000,
+      "oracle_price_exp": -8,
+      "oracle_last_update_slot": 250000500,
+      "oracle_source": "pyth"
+    },
+    {
+      "reserve_address": "EVbyPKrHG6WBfm4dLxLMJpUDY43cCAcHSpV3KYjKsktW",
+      "slot": 250000500,
+      "timestamp": 1716000000,
+      "mint": "37a2e1e03e50b9598e7eb88319af67db8c8afef74b6",
+      "symbol": "jitoSOL",
+      "mint_decimals": 9,
+      "available_amount": 10000000000000,
+      "borrowed_amount": 3000000000000,
+      "accumulated_protocol_fees": 0,
+      "accumulated_referrer_fees": 0,
+      "loan_to_value_pct": 70,
+      "liquidation_threshold_pct": 75,
+      "liquidation_bonus_bps": 600,
+      "borrow_factor_bps": 10000,
+      "max_liquidatable_close_factor_pct": 20,
+      "deposit_limit": 0,
+      "borrow_limit": 0,
+      "oracle_price_value": 17500000000,
+      "oracle_price_exp": -8,
+      "oracle_last_update_slot": 250000500,
+      "oracle_source": "pyth"
+    }
+  ],
+  "obligations": [
+    {
+      "obligation_address": "7d23073bce5e8d4498ef10ca3babf4f67ae4622b084",
+      "owner": "99f5d5d2fdc674f470c5a87b2c9561cc12ea01bb59f",
+      "slot": 250000500,
+      "deposits": [
+        {
+          "reserve_address": "d4A2prbA2whesmvHaL88BH6Ewn5N4bTSU2Ze8P6Bc4Q",
+          "deposited_amount": 200000000000
+        }
+      ],
+      "borrows": [
+        {
+          "reserve_address": "Ga4rZytCpq1unD4DbEJ5bkHeUz9g3oh9AAFEi6vSauXp",
+          "borrowed_amount": 10000000000
+        }
+      ]
+    },
+    {
+      "obligation_address": "3d930e153068d7065d4fe01a1246e5d135bf647f9b4",
+      "owner": "1c13739a4121a050642a1422a0b940cc38f5b62af71",
+      "slot": 250000500,
+      "deposits": [
+        {
+          "reserve_address": "d4A2prbA2whesmvHaL88BH6Ewn5N4bTSU2Ze8P6Bc4Q",
+          "deposited_amount": 300000000000
+        }
+      ],
+      "borrows": [
+        {
+          "reserve_address": "Ga4rZytCpq1unD4DbEJ5bkHeUz9g3oh9AAFEi6vSauXp",
+          "borrowed_amount": 15000000000
+        }
+      ]
+    },
+    {
+      "obligation_address": "624b9b6b93e946c127bf5a826dac62ccc039cf74fbe",
+      "owner": "ff5e6a6bf225c7570588350e81392ff4f7235a2b226",
+      "slot": 250000500,
+      "deposits": [
+        {
+          "reserve_address": "d4A2prbA2whesmvHaL88BH6Ewn5N4bTSU2Ze8P6Bc4Q",
+          "deposited_amount": 400000000000
+        }
+      ],
+      "borrows": [
+        {
+          "reserve_address": "Ga4rZytCpq1unD4DbEJ5bkHeUz9g3oh9AAFEi6vSauXp",
+          "borrowed_amount": 20000000000
+        }
+      ]
+    },
+    {
+      "obligation_address": "c5f531df2149dc0536ecf5cebc4853451fa24ca4694",
+      "owner": "7bac174d0e485d293aa975efd05d9e856e690fc3c0c",
+      "slot": 250000500,
+      "deposits": [
+        {
+          "reserve_address": "d4A2prbA2whesmvHaL88BH6Ewn5N4bTSU2Ze8P6Bc4Q",
+          "deposited_amount": 100000000000
+        }
+      ],
+      "borrows": [
+        {
+          "reserve_address": "Ga4rZytCpq1unD4DbEJ5bkHeUz9g3oh9AAFEi6vSauXp",
+          "borrowed_amount": 5000000000
+        }
+      ]
+    },
+    {
+      "obligation_address": "6a01c265aa2a98893525dc0f876157a9dc705920b65",
+      "owner": "a1e3066787fc9a9ac9a2839323cade24b0633d30c34",
+      "slot": 250000500,
+      "deposits": [
+        {
+          "reserve_address": "d4A2prbA2whesmvHaL88BH6Ewn5N4bTSU2Ze8P6Bc4Q",
+          "deposited_amount": 100000000000
+        }
+      ],
+      "borrows": [
+        {
+          "reserve_address": "Ga4rZytCpq1unD4DbEJ5bkHeUz9g3oh9AAFEi6vSauXp",
+          "borrowed_amount": 10500000000
+        }
+      ]
+    },
+    {
+      "obligation_address": "63fa8e944b589cdce96022ae562352bcee9ab5f84d0",
+      "owner": "f15c7ba2b05cf163f3b6f357a270212820c6a88a2e4",
+      "slot": 250000500,
+      "deposits": [
+        {
+          "reserve_address": "d4A2prbA2whesmvHaL88BH6Ewn5N4bTSU2Ze8P6Bc4Q",
+          "deposited_amount": 200000000000
+        }
+      ],
+      "borrows": [
+        {
+          "reserve_address": "Ga4rZytCpq1unD4DbEJ5bkHeUz9g3oh9AAFEi6vSauXp",
+          "borrowed_amount": 21000000000
+        }
+      ]
+    },
+    {
+      "obligation_address": "f2c7bd9b0c7574a628ac29d262949e31db1930dcd68",
+      "owner": "f5d80ed8bb58f2a97bb0f2aef24e5127eba21efa28a",
+      "slot": 250000500,
+      "deposits": [
+        {
+          "reserve_address": "d4A2prbA2whesmvHaL88BH6Ewn5N4bTSU2Ze8P6Bc4Q",
+          "deposited_amount": 200000000000
+        }
+      ],
+      "borrows": [
+        {
+          "reserve_address": "Ga4rZytCpq1unD4DbEJ5bkHeUz9g3oh9AAFEi6vSauXp",
+          "borrowed_amount": 25000000000
+        }
+      ]
+    }
+  ],
+  "top_depositors_by_reserve": {
+    "d4A2prbA2whesmvHaL88BH6Ewn5N4bTSU2Ze8P6Bc4Q": [
+      [
+        "6a8520d7570ade3a03b9b2e25105a9cb86fd66f765e",
+        30000000000000
+      ],
+      [
+        "47bfaf94fe7c891af72f60efc84e89f781c707f886a",
+        10000000000000
+      ],
+      [
+        "ed86d77529f3b8325dfadc26ab21e04402e52fc3413",
+        5000000000000
+      ]
+    ],
+    "Ga4rZytCpq1unD4DbEJ5bkHeUz9g3oh9AAFEi6vSauXp": [
+      [
+        "2966320df37a7d7a8a1e33ec3ebd311a5ae0d644062",
+        5000000000000
+      ],
+      [
+        "c9d185382e61ccc7fb8402e01c3b650e7c9a2f0ae5b",
+        2000000000000
+      ]
+    ]
+  }
+}

@@ -1,0 +1,131 @@
+# kamino-vault-counterfactuals
+
+[![CI](https://github.com/mkzung/kamino-vault-counterfactuals/actions/workflows/ci.yml/badge.svg)](https://github.com/mkzung/kamino-vault-counterfactuals/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
+
+**Historical replay + counterfactual stress testing for Kamino Lend reserves and obligations on Solana.**
+
+Direct port of [`morpho-vault-counterfactuals`](https://github.com/mkzung/morpho-vault-counterfactuals) to Solana's account model — same six-detector architecture, same fractional-impairment risk reporting style, same hermetic test discipline. Built for curators evaluating Kamino Main Market exposure, K-Lend strategy authors, and risk-team analysts at the protocols that allocate into Kamino reserves.
+
+---
+
+## What it does
+
+Given a **`KaminoMarketSnapshot`** (reserves + obligations at one Solana slot), run six independent detectors:
+
+| # | Detector | Headline metric | Question answered |
+|---|---|---|---|
+| 1 | **OracleStalenessReplay** | `fraction_bad_debt` | If a Pyth/Scope feed stalls for N slots while collateral drifts X%, how much debt crosses the bad-debt frontier (LTV > 1/(1+bonus))? |
+| 2 | **CollateralCascade** | `fraction_liquidatable_debt` | At a -10% / -20% / -30% shock to SOL (or any reserve), how much debt becomes liquidatable, and is there enough idle reserve liquidity to absorb the cascade? |
+| 3 | **DepositorExitShock** | `worst_post_exit_utilization` | If the top-N depositors of a reserve withdraw simultaneously, what's the post-exit utilization — does the reserve cross Kamino's IRM kink? |
+| 4 | **UtilizationBandBreach** | `fraction_reserves_above_target` | Which reserves are already above the curator's target utilization band (precursor to interest-rate spirals)? |
+| 5 | **LiquidationLatency** | `fraction_unprofitable_to_liquidate` | What fraction of debt sits in obligations too small to profitably liquidate at current priority-fee compute-unit cost? |
+| 6 | **LTVDistributionStress** | `fraction_debt_within_5pp_of_lltv` | What fraction of debt sits within 5 percentage points of its weighted liquidation threshold — vulnerable to a small adverse oracle move? |
+
+Each detector returns a `DetectorResult` with a single headline number plus an `evidence` dict for the curator to inspect. **Pure functions** on snapshots — no live RPC inside detectors, all I/O isolated in `fetch.py`. **Deterministic** given `(snapshot, params)`.
+
+---
+
+## Why this exists
+
+Kamino is the largest lending protocol on Solana (~$4-5B TVL as of May 2026). Curators and external risk teams (Steakhouse, MEV Capital, B.Protocol, Block Analitica) allocate against Kamino reserves and need the same counterfactual analytics they run on Ethereum's Morpho. This repo provides that toolkit.
+
+The Solana account model is different from Ethereum: reserves are PDAs holding both config and liquidity state; obligations are accounts holding deposits and borrows for a single owner across multiple reserves; oracle feeds are Pyth Pull / Scope with explicit staleness thresholds rather than Ethereum's "block-stale" model. **`kvcf` mirrors `mvcf`'s detector philosophy, but the math is Kamino-shape.**
+
+---
+
+## Install
+
+```bash
+pip install -e ".[dev]"
+```
+
+Python ≥ 3.10 required. Optional extras:
+- `kvcf[streamlit]` — live dashboard
+- `kvcf[notebook]` — Jupyter examples
+
+---
+
+## Quickstart
+
+### Synthetic demo (no RPC needed)
+
+```bash
+kvcf demo                                  # markdown report to stdout
+kvcf demo --json                           # JSON report
+kvcf demo --html report.html               # standalone HTML report
+kvcf demo --at-risk 5 --underwater 2       # more at-risk obligations
+```
+
+### Run on a fixture
+
+```bash
+kvcf run data/fixtures/main_market_2026-05-21.json \
+    --drift -0.15 --shock -0.25 --near-pp 7.0
+```
+
+### Diff two snapshots
+
+```bash
+kvcf diff data/fixtures/main_market_2026-05-21.json \
+         data/fixtures/main_market_2026-05-22.json
+```
+
+### Programmatic
+
+```python
+from kvcf import run_all_detectors, as_html, load_fixture, RunnerConfig
+
+snap = load_fixture("data/fixtures/main_market_2026-05-21.json")
+results = run_all_detectors(snap, RunnerConfig(drift_pct=-0.15, shock_pct=-0.25))
+
+# Write a curator-facing HTML report
+with open("report.html", "w") as f:
+    f.write(as_html(results, title="Kamino Main Market — 2026-05-21"))
+```
+
+---
+
+## Architecture
+
+```
+src/kvcf/
+├── state.py           # ReserveState, ObligationState, KaminoMarketSnapshot
+├── detectors.py       # 6 counterfactual detectors
+├── runner.py          # run_all_detectors + RunnerConfig
+├── diff.py            # snapshot-to-snapshot deltas
+├── synthetic.py       # deterministic test fixtures (no RPC)
+├── fetch.py           # live Solana RPC + JSON fixture loader
+├── report.py          # JSON / Markdown
+├── html_report.py     # standalone HTML
+└── __main__.py        # CLI: kvcf {demo,run,diff}
+```
+
+Tests live in `tests/`, hermetic — they import `synthetic.make_market_snapshot()` rather than hitting mainnet. CI matrix: Py 3.10 / 3.11 / 3.12 on Ubuntu + macOS.
+
+---
+
+## What this is NOT
+
+- ❌ **A Solana program.** This is an off-chain Python analytics tool. It reads Kamino state via RPC; it does not deploy contracts.
+- ❌ **A liquidator bot.** No transaction signing. Detectors model counterfactuals, not execution.
+- ❌ **Production financial advice.** Curators should validate detector outputs against their own risk models. Bad-debt frontier and IRM constants are Kamino-mainnet-mainstream defaults; configure per-reserve as appropriate.
+
+---
+
+## Companion repos
+
+This is one piece of a portable DeFi-risk toolkit:
+
+- 🟦 [`morpho-vault-counterfactuals`](https://github.com/mkzung/morpho-vault-counterfactuals) — same six-detector framework for Morpho MetaMorpho on Ethereum.
+- 🟧 [`fundarb`](https://github.com/mkzung/fundarb) — cross-venue funding-rate arbitrage CLI (Hyperliquid, Orderly, Backpack).
+- 🟨 [`ethbtc-suspicious-patterns`](https://github.com/mkzung/ethbtc-suspicious-patterns) — six-detector forensic framework on ETH/BTC microstructure (Inca Digital Challenge #492).
+
+The shared design language across these four repos: **six detectors, pure functions, fractional-impairment metrics, hermetic CI, MIT.**
+
+---
+
+## License
+
+[MIT](LICENSE). See `CITATION.cff` for academic-attribution metadata.
