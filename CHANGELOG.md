@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.1.1] — 2026-05-21 (post-audit corrections)
+
+### Fixed
+
+- **Hardcoded base58 addresses replaced with clearly-synthetic placeholders.**
+  Prior `0.1.0` shipped reserve/market addresses that LOOKED like real Kamino
+  mainnet PDAs but were not verified against any source. Synthetic fixtures
+  now use prefix-tagged placeholders (e.g. `SyntheticSoLReserve…`) that cannot
+  be confused with mainnet state.
+- **`KAMINO_MAIN_MARKET` constant in `fetch.py` no longer defaults to a
+  pretend mainnet address.** Callers must pass the market PDA explicitly,
+  forcing them to look up the canonical value from Kamino docs.
+- **`OracleStalenessReplay.stale_slots` now actually gates the math.** Prior
+  versions accepted the parameter but only echoed it in the interpretation
+  string. The detector now filters obligations to those whose collateral
+  reserves are *currently* lagging by ≥ `stale_slots`. `stale_slots=0`
+  disables the gate (matches the prior behavior).
+- README/state.py: dropped the "Steakhouse / MEV Capital / B.Protocol /
+  Block Analitica" curator name-drop — those are Morpho (Ethereum) curators,
+  not Kamino. Replaced with truthful audience: K-Lend strategy authors,
+  Kamino risk team, external Solana DeFi risk analysts.
+- TVL claim softened from "the largest lending protocol on Solana
+  (~\$4-5B TVL as of May 2026)" → "one of the largest lending protocols on
+  Solana by TVL" — the prior phrasing implied a precise market ranking that
+  could not be sourced.
+- Added "Note on data" callout in README making the synthetic nature of
+  shipped fixtures explicit.
+
 ## [0.1.0] — 2026-05-21
 
 Initial release.

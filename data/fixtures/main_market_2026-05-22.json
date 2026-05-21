@@ -1,11 +1,11 @@
 {
-  "market_address": "7u3HeHxYDLhnCoErrtycNokbQYbWGzLs6JSDqGAv5K1z",
-  "market_name": "Kamino Main Market (synthetic)",
+  "market_address": "SyntheticKaminoMarket1111111111111111111111",
+  "market_name": "Synthetic test market (NOT real Kamino mainnet)",
   "slot": 250000500,
   "timestamp": 1716000000,
   "reserves": [
     {
-      "reserve_address": "d4A2prbA2whesmvHaL88BH6Ewn5N4bTSU2Ze8P6Bc4Q",
+      "reserve_address": "SyntheticSoLReserve1111111111111111111111111",
       "slot": 250000500,
       "timestamp": 1716000000,
       "mint": "fab390771afdf36d58a0c02787b74212d764c324ed8",
@@ -28,7 +28,7 @@
       "oracle_source": "pyth"
     },
     {
-      "reserve_address": "Ga4rZytCpq1unD4DbEJ5bkHeUz9g3oh9AAFEi6vSauXp",
+      "reserve_address": "SyntheticUSDCReserve111111111111111111111111",
       "slot": 250000500,
       "timestamp": 1716000000,
       "mint": "0d3aeb076dbec3a0df0944fda46f132ea9ce8b234b6",
@@ -51,7 +51,7 @@
       "oracle_source": "pyth"
     },
     {
-      "reserve_address": "DdTmCCjv7zHRD1hJv3E8bpnSEQBzdKkzB1j9ApXX5QrQ",
+      "reserve_address": "SyntheticJLPReserve1111111111111111111111111",
       "slot": 250000500,
       "timestamp": 1716000000,
       "mint": "a5a1ed73d2a6c4374e830c3eedead69743bfd440801",
@@ -74,7 +74,7 @@
       "oracle_source": "pyth"
     },
     {
-      "reserve_address": "EVbyPKrHG6WBfm4dLxLMJpUDY43cCAcHSpV3KYjKsktW",
+      "reserve_address": "SyntheticJitoSoLReserve11111111111111111111",
       "slot": 250000500,
       "timestamp": 1716000000,
       "mint": "37a2e1e03e50b9598e7eb88319af67db8c8afef74b6",
@@ -104,13 +104,13 @@
       "slot": 250000500,
       "deposits": [
         {
-          "reserve_address": "d4A2prbA2whesmvHaL88BH6Ewn5N4bTSU2Ze8P6Bc4Q",
+          "reserve_address": "SyntheticSoLReserve1111111111111111111111111",
           "deposited_amount": 200000000000
         }
       ],
       "borrows": [
         {
-          "reserve_address": "Ga4rZytCpq1unD4DbEJ5bkHeUz9g3oh9AAFEi6vSauXp",
+          "reserve_address": "SyntheticUSDCReserve111111111111111111111111",
           "borrowed_amount": 10000000000
         }
       ]
@@ -121,13 +121,13 @@
       "slot": 250000500,
       "deposits": [
         {
-          "reserve_address": "d4A2prbA2whesmvHaL88BH6Ewn5N4bTSU2Ze8P6Bc4Q",
+          "reserve_address": "SyntheticSoLReserve1111111111111111111111111",
           "deposited_amount": 300000000000
         }
       ],
       "borrows": [
         {
-          "reserve_address": "Ga4rZytCpq1unD4DbEJ5bkHeUz9g3oh9AAFEi6vSauXp",
+          "reserve_address": "SyntheticUSDCReserve111111111111111111111111",
           "borrowed_amount": 15000000000
         }
       ]
@@ -138,13 +138,13 @@
       "slot": 250000500,
       "deposits": [
         {
-          "reserve_address": "d4A2prbA2whesmvHaL88BH6Ewn5N4bTSU2Ze8P6Bc4Q",
+          "reserve_address": "SyntheticSoLReserve1111111111111111111111111",
           "deposited_amount": 400000000000
         }
       ],
       "borrows": [
         {
-          "reserve_address": "Ga4rZytCpq1unD4DbEJ5bkHeUz9g3oh9AAFEi6vSauXp",
+          "reserve_address": "SyntheticUSDCReserve111111111111111111111111",
           "borrowed_amount": 20000000000
         }
       ]
@@ -155,13 +155,13 @@
       "slot": 250000500,
       "deposits": [
         {
-          "reserve_address": "d4A2prbA2whesmvHaL88BH6Ewn5N4bTSU2Ze8P6Bc4Q",
+          "reserve_address": "SyntheticSoLReserve1111111111111111111111111",
           "deposited_amount": 100000000000
         }
       ],
       "borrows": [
         {
-          "reserve_address": "Ga4rZytCpq1unD4DbEJ5bkHeUz9g3oh9AAFEi6vSauXp",
+          "reserve_address": "SyntheticUSDCReserve111111111111111111111111",
           "borrowed_amount": 5000000000
         }
       ]
@@ -172,13 +172,13 @@
       "slot": 250000500,
       "deposits": [
         {
-          "reserve_address": "d4A2prbA2whesmvHaL88BH6Ewn5N4bTSU2Ze8P6Bc4Q",
+          "reserve_address": "SyntheticSoLReserve1111111111111111111111111",
           "deposited_amount": 100000000000
         }
       ],
       "borrows": [
         {
-          "reserve_address": "Ga4rZytCpq1unD4DbEJ5bkHeUz9g3oh9AAFEi6vSauXp",
+          "reserve_address": "SyntheticUSDCReserve111111111111111111111111",
           "borrowed_amount": 10500000000
         }
       ]
@@ -189,13 +189,13 @@
       "slot": 250000500,
       "deposits": [
         {
-          "reserve_address": "d4A2prbA2whesmvHaL88BH6Ewn5N4bTSU2Ze8P6Bc4Q",
+          "reserve_address": "SyntheticSoLReserve1111111111111111111111111",
           "deposited_amount": 200000000000
         }
       ],
       "borrows": [
         {
-          "reserve_address": "Ga4rZytCpq1unD4DbEJ5bkHeUz9g3oh9AAFEi6vSauXp",
+          "reserve_address": "SyntheticUSDCReserve111111111111111111111111",
           "borrowed_amount": 21000000000
         }
       ]
@@ -206,20 +206,20 @@
       "slot": 250000500,
       "deposits": [
         {
-          "reserve_address": "d4A2prbA2whesmvHaL88BH6Ewn5N4bTSU2Ze8P6Bc4Q",
+          "reserve_address": "SyntheticSoLReserve1111111111111111111111111",
           "deposited_amount": 200000000000
         }
       ],
       "borrows": [
         {
-          "reserve_address": "Ga4rZytCpq1unD4DbEJ5bkHeUz9g3oh9AAFEi6vSauXp",
+          "reserve_address": "SyntheticUSDCReserve111111111111111111111111",
           "borrowed_amount": 25000000000
         }
       ]
     }
   ],
   "top_depositors_by_reserve": {
-    "d4A2prbA2whesmvHaL88BH6Ewn5N4bTSU2Ze8P6Bc4Q": [
+    "SyntheticSoLReserve1111111111111111111111111": [
       [
         "6a8520d7570ade3a03b9b2e25105a9cb86fd66f765e",
         30000000000000
@@ -233,7 +233,7 @@
         5000000000000
       ]
     ],
-    "Ga4rZytCpq1unD4DbEJ5bkHeUz9g3oh9AAFEi6vSauXp": [
+    "SyntheticUSDCReserve111111111111111111111111": [
       [
         "2966320df37a7d7a8a1e33ec3ebd311a5ae0d644062",
         5000000000000

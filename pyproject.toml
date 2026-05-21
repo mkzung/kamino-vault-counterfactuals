@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "kamino-vault-counterfactuals"
-version = "0.1.0"
+version = "0.1.1"
 description = "Historical replay + counterfactual stress testing for Kamino Lend reserves on Solana."
 readme = "README.md"
 license = { text = "MIT" }

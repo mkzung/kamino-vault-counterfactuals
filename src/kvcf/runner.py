@@ -25,9 +25,11 @@ class RunnerConfig:
     bonus, ~50-slot oracle staleness threshold).
     """
 
-    # OracleStalenessReplay
+    # OracleStalenessReplay — stale_slots default 0 means "no staleness gate";
+    # override to a positive value (e.g., 25 or 50) to only flag obligations
+    # touching reserves whose oracle is currently lagging by that many slots.
     drift_pct: float = -0.10
-    stale_slots: int = 50
+    stale_slots: int = 0
 
     # CollateralCascade
     shock_pct: float = -0.20

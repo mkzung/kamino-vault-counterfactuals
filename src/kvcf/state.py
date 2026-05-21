@@ -1,6 +1,6 @@
 """Domain models for Kamino Lend reserve and obligation state on Solana.
 
-Kamino Lend is the largest lending protocol on Solana (~$4-5B TVL as of 2026-05).
+Kamino Lend is one of the largest lending protocols on Solana by TVL.
 Each Reserve is a pool for one asset, with on-chain config (LTV, liquidation
 threshold, liquidation bonus, max-borrow factor, kink utilization). Reserves
 are read/written by Obligations — borrower positions holding deposits and

@@ -20,11 +20,15 @@ from .state import (
     ReserveState,
 )
 
-# Canonical reserve addresses (mainnet Kamino Main market, abbreviated)
-SOL_RESERVE = "d4A2prbA2whesmvHaL88BH6Ewn5N4bTSU2Ze8P6Bc4Q"
-USDC_RESERVE = "Ga4rZytCpq1unD4DbEJ5bkHeUz9g3oh9AAFEi6vSauXp"
-JLP_RESERVE = "DdTmCCjv7zHRD1hJv3E8bpnSEQBzdKkzB1j9ApXX5QrQ"
-JITOSOL_RESERVE = "EVbyPKrHG6WBfm4dLxLMJpUDY43cCAcHSpV3KYjKsktW"
+# Synthetic-fixture reserve addresses (NOT real Kamino mainnet PDAs).
+# These are deterministic placeholders for tests + offline demos. Real
+# Kamino reserve addresses are looked up at fetch time via the Kamino API
+# (https://api.kamino.finance) or by deriving from the market PDA — see
+# src/kvcf/fetch.py. NEVER use these strings to query mainnet RPC.
+SOL_RESERVE = "SyntheticSoLReserve1111111111111111111111111"
+USDC_RESERVE = "SyntheticUSDCReserve111111111111111111111111"
+JLP_RESERVE = "SyntheticJLPReserve1111111111111111111111111"
+JITOSOL_RESERVE = "SyntheticJitoSoLReserve11111111111111111111"
 
 # Reasonable mainnet prices for synthetic state
 _PRICE_DEFAULTS = {
@@ -221,8 +225,8 @@ def make_market_snapshot(
     }
 
     return KaminoMarketSnapshot(
-        market_address="7u3HeHxYDLhnCoErrtycNokbQYbWGzLs6JSDqGAv5K1z",  # Kamino Main market
-        market_name="Kamino Main Market (synthetic)",
+        market_address="SyntheticKaminoMarket1111111111111111111111",
+        market_name="Synthetic test market (NOT real Kamino mainnet)",
         slot=slot,
         timestamp=timestamp,
         reserves=reserves,

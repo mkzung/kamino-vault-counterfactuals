@@ -32,8 +32,9 @@ class TestOracleStalenessReplay:
 
     def test_severe_drift_produces_bad_debt_on_at_risk(self):
         snap = make_market_snapshot(n_healthy=0, n_at_risk=5, n_underwater=0)
-        # 30% SOL drift will push 70%-LTV positions over the bad-debt frontier
-        det = OracleStalenessReplay(drift_pct=-0.30, stale_slots=50)
+        # 30% SOL drift will push 70%-LTV positions over the bad-debt frontier.
+        # Use stale_slots=0 to disable the staleness gate (synthetic data has fresh oracles).
+        det = OracleStalenessReplay(drift_pct=-0.30, stale_slots=0)
         res = det.run(snap)
         assert res.headline_metric > 0.0
         assert res.headline_unit == "fraction_bad_debt"
@@ -44,9 +45,47 @@ class TestOracleStalenessReplay:
         # the 1/(1+bonus) frontier (≈ 95.2% at 5% bonus). A 25% downside drift compresses
         # the underwater positions' true collateral, pushing their LTV above the frontier.
         snap = make_market_snapshot(n_healthy=0, n_at_risk=0, n_underwater=3)
-        det = OracleStalenessReplay(drift_pct=-0.25, stale_slots=50)
+        det = OracleStalenessReplay(drift_pct=-0.25, stale_slots=0)
         res = det.run(snap)
         assert res.headline_metric > 0.0
+        assert res.evidence["bad_debt_obligations"] >= 1
+
+    def test_staleness_gate_skips_when_oracles_fresh(self):
+        # Synthetic snapshot has oracle_last_update_slot == snapshot.slot (zero staleness).
+        # With a positive stale_slots threshold, ALL obligations should be skipped.
+        snap = make_market_snapshot(n_healthy=0, n_at_risk=5, n_underwater=2)
+        det = OracleStalenessReplay(drift_pct=-0.30, stale_slots=50)
+        res = det.run(snap)
+        assert res.headline_metric == 0.0
+        assert res.evidence["bad_debt_obligations"] == 0
+        assert res.evidence["skipped_for_fresh_oracle"] == 7
+
+    def test_staleness_gate_fires_when_reserve_stale(self):
+        # Build a snapshot where the SOL reserve has actual staleness ≥ 50 slots.
+        from kvcf.state import KaminoMarketSnapshot
+        from kvcf.synthetic import make_market_snapshot, make_reserve
+        base = make_market_snapshot(n_healthy=0, n_at_risk=0, n_underwater=3, slot=250_000_000)
+        # Replace SOL reserve with one that has stale oracle
+        sol_stale = make_reserve(
+            "SOL",
+            available_amount=80_000 * 10**9,
+            borrowed_amount=40_000 * 10**9,
+            slot=250_000_000,
+            oracle_staleness_slots=120,  # 120 slots > our threshold of 50
+        )
+        new_reserves = [sol_stale] + [r for r in base.reserves if r.symbol != "SOL"]
+        snap_stale = KaminoMarketSnapshot(
+            market_address=base.market_address,
+            market_name=base.market_name,
+            slot=base.slot,
+            timestamp=base.timestamp,
+            reserves=new_reserves,
+            obligations=base.obligations,
+            top_depositors_by_reserve=base.top_depositors_by_reserve,
+        )
+        det = OracleStalenessReplay(drift_pct=-0.25, stale_slots=50)
+        res = det.run(snap_stale)
+        # Now the obligations DO pass the staleness gate, and severe drift hits bad-debt frontier
         assert res.evidence["bad_debt_obligations"] >= 1
 
     def test_rejects_positive_drift(self):
@@ -63,6 +102,15 @@ class TestOracleStalenessReplay:
         res = det.run(snap)
         assert res.evidence["stale_slots"] == 100
         assert math.isclose(res.evidence["stale_seconds_est"], 40.0)
+
+    def test_stale_slots_zero_disables_gate(self):
+        # With stale_slots=0 the gate is disabled — synthetic at-risk positions are evaluated.
+        snap = make_market_snapshot(n_healthy=0, n_at_risk=3, n_underwater=0)
+        det = OracleStalenessReplay(drift_pct=-0.30, stale_slots=0)
+        res = det.run(snap)
+        # All obligations evaluated; their LTV may or may not cross frontier but the
+        # skip counter MUST be 0
+        assert res.evidence["skipped_for_fresh_oracle"] == 0
 
 
 # ──────────────────────────────────────────────────────────────────────

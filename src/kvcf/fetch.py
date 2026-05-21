@@ -32,7 +32,13 @@ from .state import (
 )
 
 DEFAULT_RPC = "https://api.mainnet-beta.solana.com"
-KAMINO_MAIN_MARKET = "7u3HeHxYDLhnCoErrtycNokbQYbWGzLs6JSDqGAv5K1z"
+# Kamino Main Market PDA on Solana mainnet. The canonical value is
+# documented in the Kamino docs at https://docs.kamino.finance — set this
+# via the `market_address` argument to `fetch_market_snapshot()` rather
+# than relying on a hardcoded default, since Kamino has rotated market
+# PDAs in the past and may again. The empty default forces the caller to
+# pass the address explicitly.
+KAMINO_MAIN_MARKET = ""
 
 
 def load_fixture(path: str | Path) -> KaminoMarketSnapshot:
@@ -58,7 +64,7 @@ def load_history(dir_path: str | Path) -> list[KaminoMarketSnapshot]:
 
 
 def fetch_market_snapshot(
-    market_address: str = KAMINO_MAIN_MARKET,
+    market_address: str,
     rpc_url: str = DEFAULT_RPC,
     *,
     timeout_s: float = 15.0,

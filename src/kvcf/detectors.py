@@ -61,29 +61,33 @@ class DetectorResult:
 
 class OracleStalenessReplay:
     """What fraction of debt becomes **bad debt** if a reserve's oracle is
-    stale by > `stale_slots` while the true collateral price drifts by
-    `drift_pct`?
+    already stale by ≥ `stale_slots` AND the true collateral price drifts
+    by `drift_pct` during that staleness window?
 
     Solana slot ≈ 400 ms. Scope's default staleness threshold for major
     feeds is 25 slots (10 s); some feeds (RWA, illiquid) allow 100-200.
-    When a feed is stale beyond threshold, Kamino pauses reserve actions —
-    but the *true* solvency of in-flight obligations has already shifted.
+    When a feed is stale beyond threshold, Kamino's risk engine should
+    pause reserve actions — but if the *true* solvency of in-flight
+    obligations has already shifted, in-flight liquidations also lag.
 
-    Bad-debt frontier: a position becomes uneconomic to liquidate even
-    once the oracle updates when
+    The detector flags obligations whose **any collateral reserve has
+    actual oracle staleness ≥ `stale_slots`** AND whose post-drift LTV
+    crosses the bad-debt frontier:
 
         ltv > 1 / (1 + liquidation_bonus)
 
-    because the seized collateral is then worth less than the debt being
-    repaid net of liquidator bonus. Each Kamino reserve has its own
-    bonus, so the frontier is per-reserve.
+    Beyond that frontier, seized collateral cannot cover debt-plus-bonus
+    once the oracle updates. Each Kamino reserve has its own bonus, so
+    the frontier is computed against the most-stale collateral's bonus.
 
     Args:
-      drift_pct: signed collateral price drift while oracle is stale.
-        Negative for downside scenarios (the common case). Positive
-        rejected because positive drift cannot create bad debt.
-      stale_slots: number of slots the feed is assumed to have lapsed.
-        Used in the evidence dict and per-reserve breakdown only.
+      drift_pct: signed collateral price drift during the staleness
+        window. Negative for downside scenarios. Positive values rejected
+        because they cannot create bad debt.
+      stale_slots: minimum slot-count of oracle staleness on at least one
+        collateral reserve for the obligation to count. Set to 0 to skip
+        the staleness gate and consider every obligation (matches the
+        "every oracle could be wrong" worst case).
     """
 
     def __init__(self, drift_pct: float = -0.10, stale_slots: int = 50):
@@ -99,10 +103,28 @@ class OracleStalenessReplay:
         bad_debt_usd = 0.0
         total_debt_usd = 0.0
         bad_debt_obligations = 0
+        skipped_for_fresh_oracle = 0
         per_reserve: dict[str, dict[str, float]] = {}
 
         # Pre-compute shocked collateral value for each obligation
         for ob in snapshot.obligations:
+            # Staleness gate: at least one collateral reserve must have an
+            # oracle stale by ≥ stale_slots at the snapshot's current slot.
+            # stale_slots=0 disables the gate (every obligation counts).
+            if self.stale_slots > 0:
+                max_obs_staleness = max(
+                    (
+                        reserves[d.reserve_address].oracle_staleness_slots(snapshot.slot)
+                        for d in ob.deposits
+                        if d.reserve_address in reserves
+                    ),
+                    default=0,
+                )
+                if max_obs_staleness < self.stale_slots:
+                    skipped_for_fresh_oracle += 1
+                    total_debt_usd += ob.borrowed_value_usd(reserves)
+                    continue
+
             # Build a shocked-reserves view: only collateral reserves shocked,
             # not loan reserves (the freeze hides the move on the collateral
             # side; the loan asset oracle is independent).
@@ -174,6 +196,7 @@ class OracleStalenessReplay:
                 "bad_debt_usd": bad_debt_usd,
                 "total_debt_usd": total_debt_usd,
                 "bad_debt_obligations": bad_debt_obligations,
+                "skipped_for_fresh_oracle": skipped_for_fresh_oracle,
                 "per_reserve": per_reserve,
             },
         )
