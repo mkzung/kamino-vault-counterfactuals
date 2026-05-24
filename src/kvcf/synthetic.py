@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import hashlib
 
+import base58
+
 from .state import (
     KaminoMarketSnapshot,
     ObligationBorrow,
@@ -19,6 +21,21 @@ from .state import (
     ObligationState,
     ReserveState,
 )
+
+
+def _synth_b58(label: str) -> str:
+    """Deterministic synthetic base58 address from a label.
+
+    Real Solana addresses are 32-byte ed25519 pubkeys encoded as base58
+    (44 chars typical). The prior implementation used `hashlib.sha256(...).hexdigest()[:43]`
+    which produced hex strings — visually plausible but invalid base58
+    (hex includes the characters `0`, `O`, `I`, `l` which base58 omits,
+    and downstream code expecting `base58.b58decode(...)` to round-trip
+    would fail). Using `b58encode` of the raw sha256 digest yields a
+    string in the real base58 alphabet of length 43-44.
+    """
+    digest = hashlib.sha256(label.encode()).digest()
+    return base58.b58encode(digest).decode("ascii")
 
 # Synthetic-fixture reserve addresses (NOT real Kamino mainnet PDAs).
 # These are deterministic placeholders for tests + offline demos. Real
@@ -77,7 +94,7 @@ def make_reserve(
         reserve_address=_addr_for_symbol(symbol),
         slot=slot,
         timestamp=timestamp,
-        mint=hashlib.sha256(f"mint-{symbol}".encode()).hexdigest()[:43],
+        mint=_synth_b58(f"mint-{symbol}"),
         symbol=symbol,
         mint_decimals=_decimals_for_symbol(symbol),
         available_amount=available_amount,
@@ -102,8 +119,8 @@ def make_obligation(
 ) -> ObligationState:
     """Build an ObligationState from (symbol, amount) lists."""
     return ObligationState(
-        obligation_address=hashlib.sha256(f"ob-{owner_id}".encode()).hexdigest()[:43],
-        owner=hashlib.sha256(f"owner-{owner_id}".encode()).hexdigest()[:43],
+        obligation_address=_synth_b58(f"ob-{owner_id}"),
+        owner=_synth_b58(f"owner-{owner_id}"),
         slot=slot,
         deposits=[
             ObligationDeposit(reserve_address=_addr_for_symbol(sym), deposited_amount=amt)
@@ -214,13 +231,13 @@ def make_market_snapshot(
     # Synthetic top depositors per reserve (one whale, several small fish)
     top_depositors_by_reserve: dict[str, list[tuple[str, int]]] = {
         SOL_RESERVE: [
-            (hashlib.sha256(f"sol-whale-{seed}".encode()).hexdigest()[:43], 30_000 * 10**9),
-            (hashlib.sha256(f"sol-w2-{seed}".encode()).hexdigest()[:43], 10_000 * 10**9),
-            (hashlib.sha256(f"sol-w3-{seed}".encode()).hexdigest()[:43], 5_000 * 10**9),
+            (_synth_b58(f"sol-whale-{seed}"), 30_000 * 10**9),
+            (_synth_b58(f"sol-w2-{seed}"), 10_000 * 10**9),
+            (_synth_b58(f"sol-w3-{seed}"), 5_000 * 10**9),
         ],
         USDC_RESERVE: [
-            (hashlib.sha256(f"usdc-whale-{seed}".encode()).hexdigest()[:43], 5_000_000 * 10**6),
-            (hashlib.sha256(f"usdc-w2-{seed}".encode()).hexdigest()[:43], 2_000_000 * 10**6),
+            (_synth_b58(f"usdc-whale-{seed}"), 5_000_000 * 10**6),
+            (_synth_b58(f"usdc-w2-{seed}"), 2_000_000 * 10**6),
         ],
     }
 

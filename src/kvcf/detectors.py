@@ -45,10 +45,15 @@ from .state import KaminoMarketSnapshot
 
 @dataclass(frozen=True)
 class DetectorResult:
-    """Output of a single detector on one snapshot."""
+    """Output of a single detector on one snapshot.
+
+    `headline_metric` is `None` when a detector can't compute its number
+    from the input (e.g., no top-depositor data). This is distinct from
+    `0.0` (computed and benign) — consumers MUST handle both.
+    """
 
     name: str
-    headline_metric: float
+    headline_metric: float | None
     headline_unit: str
     interpretation: str
     evidence: dict[str, Any] = field(default_factory=dict)
@@ -143,6 +148,15 @@ class OracleStalenessReplay:
             if debt_usd == 0:
                 continue
 
+            # Zero-collateral debt is degenerate (already bad debt by
+            # definition, no reserve to attribute to, no shock semantics).
+            # Exclude these from the headline entirely — counting them
+            # would inflate `bad_debt_usd` with rows the `per_reserve`
+            # breakdown can never explain. We track them in evidence so
+            # they aren't silently dropped.
+            if shocked_collateral_usd <= 0:
+                continue
+
             # Per-reserve bonus: use the *largest collateral reserve's* bonus
             # as a worst-case proxy. (Kamino liquidator picks one reserve at a
             # time, but for risk reporting we want the conservative bound.)
@@ -158,7 +172,7 @@ class OracleStalenessReplay:
 
             # Bad-debt frontier given that bonus
             bad_debt_frontier_ltv = 1.0 / (1.0 + max_bonus) if max_bonus > 0 else 1.0
-            true_ltv = debt_usd / shocked_collateral_usd if shocked_collateral_usd > 0 else float("inf")
+            true_ltv = debt_usd / shocked_collateral_usd
 
             if true_ltv > bad_debt_frontier_ltv:
                 bad_debt_usd += debt_usd
@@ -222,21 +236,52 @@ class CollateralCascade:
         cliff.
     """
 
-    def __init__(self, shock_pct: float = -0.20, target_reserve_symbol: str | None = None):
-        if not -0.99 < shock_pct < 0.0:
+    def __init__(
+        self,
+        shock_pct: float = -0.20,
+        target_reserve_symbol: str | None = None,
+        *,
+        shock_stablecoins: bool = False,
+    ):
+        # Symmetry with OracleStalenessReplay.drift_pct: both accept 0.0 as a
+        # well-defined no-shock baseline. 0.0 is a degenerate but valid input
+        # (the detector emits zero impairment), useful for parameter sweeps
+        # that start at "no shock" and walk down.
+        if not -0.99 < shock_pct <= 0.0:
             raise ValueError(
-                f"shock_pct must be a negative fraction in (-0.99, 0), got {shock_pct}"
+                f"shock_pct must be in (-0.99, 0.0], got {shock_pct}"
             )
         self.shock_pct = shock_pct
         self.target_reserve_symbol = target_reserve_symbol
+        self.shock_stablecoins = shock_stablecoins
+
+    # Assets we treat as "non-shockable" when target_reserve_symbol is None
+    # and the caller has NOT opted into shock_stablecoins=True. JLP and
+    # jitoSOL are technically not stablecoins, but at typical scenario
+    # depth (-10 to -30%) shocking them along with the loan asset
+    # over-states cascade risk. Curators who want full-collateral shocks
+    # should either name the symbol explicitly or pass shock_stablecoins=True.
+    _NON_SHOCKABLE_DEFAULT = frozenset({"USDC", "USDT", "JLP", "jitoSOL"})
 
     def run(self, snapshot: KaminoMarketSnapshot) -> DetectorResult:
         reserves = snapshot.reserves_by_address
 
-        # Build a shocked-price map for the targeted reserve(s)
+        # Build a shocked-price map for the targeted reserve(s).
+        # Backward-compat: if `target_reserve_symbol` is set, only that
+        # symbol is shocked (prior behavior). If target is None and
+        # shock_stablecoins=False (default), skip stablecoin / LP-token
+        # reserves and only shock "true" collateral (e.g., SOL).
         shocked_prices: dict[str, float] = {}
         for r in snapshot.reserves:
-            if self.target_reserve_symbol is None or r.symbol == self.target_reserve_symbol:
+            should_shock: bool
+            if self.target_reserve_symbol is not None:
+                should_shock = r.symbol == self.target_reserve_symbol
+            else:
+                should_shock = (
+                    self.shock_stablecoins
+                    or r.symbol not in self._NON_SHOCKABLE_DEFAULT
+                )
+            if should_shock:
                 shocked_prices[r.reserve_address] = r.price_usd * (1 + self.shock_pct)
             else:
                 shocked_prices[r.reserve_address] = r.price_usd
@@ -359,6 +404,7 @@ class DepositorExitShock:
         worst_post_util = 0.0
         worst_reserve: str | None = None
         per_reserve: dict[str, dict[str, Any]] = {}
+        n_reserves_with_data = 0
 
         for r in snapshot.reserves:
             if self.target_reserve_symbol and r.symbol != self.target_reserve_symbol:
@@ -366,6 +412,7 @@ class DepositorExitShock:
             deps = snapshot.top_depositors_by_reserve.get(r.reserve_address, [])
             if not deps:
                 continue
+            n_reserves_with_data += 1
             top_amount = sum(amt for _, amt in deps[: self.top_n])
 
             # post-exit liquidity: available_amount - top_amount
@@ -383,6 +430,29 @@ class DepositorExitShock:
             if post_util > worst_post_util:
                 worst_post_util = post_util
                 worst_reserve = r.reserve_address
+
+        # No top-depositor data anywhere → headline is undefined, NOT 0.
+        # Returning 0 would look like "healthy" to a glance reader; None
+        # forces consumers to acknowledge the missing input.
+        if n_reserves_with_data == 0:
+            return DetectorResult(
+                name="DepositorExitShock",
+                headline_metric=None,
+                headline_unit="worst_post_exit_utilization",
+                interpretation=(
+                    "Cannot compute: snapshot has no top_depositors_by_reserve "
+                    "data. Live Kamino fetches via the public RPC do not include "
+                    "depositor concentration; the fetcher must be configured "
+                    "with an indexer pull (Birdeye / DefiLlama / Helius) for "
+                    "this detector to fire."
+                ),
+                evidence={
+                    "top_n": self.top_n,
+                    "target_reserve_symbol": self.target_reserve_symbol,
+                    "reason": "no top_depositors_by_reserve data",
+                    "per_reserve": {},
+                },
+            )
 
         worst_symbol = (
             snapshot.reserves_by_address[worst_reserve].symbol

@@ -153,9 +153,38 @@ class TestCollateralCascade:
         with pytest.raises(ValueError, match="shock_pct"):
             CollateralCascade(shock_pct=0.10)
 
-    def test_rejects_zero_shock(self):
-        with pytest.raises(ValueError, match="shock_pct"):
-            CollateralCascade(shock_pct=0.0)
+    def test_accepts_zero_shock_for_symmetry_with_oracle_drift(self):
+        # v0.2.0: shock_pct=0.0 is accepted as a degenerate no-shock
+        # baseline, matching OracleStalenessReplay.drift_pct semantics.
+        # Useful for parameter sweeps that walk from 0 downward.
+        snap = make_market_snapshot(n_healthy=2, n_at_risk=1, n_underwater=0)
+        det = CollateralCascade(shock_pct=0.0)
+        res = det.run(snap)
+        # No shock → only positions already underwater would liquidate.
+        # None are, so the headline must be 0.
+        assert res.headline_metric == 0.0
+
+    def test_stablecoins_not_shocked_by_default(self):
+        # v0.2.0: when target is None, USDC/USDT/JLP/jitoSOL are NOT
+        # shocked by default. A -30% shock with target=None should be
+        # IDENTICAL to a -30% shock of "SOL" only (since the synthetic
+        # market's only true-collateral asset is SOL).
+        snap = make_market_snapshot(n_healthy=0, n_at_risk=5, n_underwater=0)
+        default_target = CollateralCascade(shock_pct=-0.30).run(snap)
+        sol_only = CollateralCascade(
+            shock_pct=-0.30, target_reserve_symbol="SOL"
+        ).run(snap)
+        assert default_target.headline_metric == sol_only.headline_metric
+
+    def test_shock_stablecoins_opt_in(self):
+        # Opting in with shock_stablecoins=True must produce equal-or-
+        # larger impairment than the default (more collateral is shocked).
+        snap = make_market_snapshot(n_healthy=0, n_at_risk=5, n_underwater=0)
+        default = CollateralCascade(shock_pct=-0.30).run(snap)
+        all_in = CollateralCascade(
+            shock_pct=-0.30, shock_stablecoins=True
+        ).run(snap)
+        assert all_in.headline_metric >= default.headline_metric
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -176,9 +205,25 @@ class TestDepositorExitShock:
         snap = make_market_snapshot(n_healthy=1, n_at_risk=0, n_underwater=0)
         det_sol = DepositorExitShock(top_n=1, target_reserve_symbol="SOL")
         det_jlp = DepositorExitShock(top_n=1, target_reserve_symbol="JLP")
-        # JLP has no synthetic top depositors → 0
-        assert det_jlp.run(snap).headline_metric == 0.0
-        assert det_sol.run(snap).headline_metric > 0.0
+        # v0.2.0: JLP has no synthetic top-depositor data → headline is
+        # explicitly None ("undefined") rather than 0 ("computed and
+        # benign"). 0 would look healthy on a glance read; None forces
+        # the consumer to acknowledge the missing input.
+        jlp_res = det_jlp.run(snap)
+        assert jlp_res.headline_metric is None
+        assert jlp_res.evidence["reason"] == "no top_depositors_by_reserve data"
+        assert det_sol.run(snap).headline_metric is not None
+        assert det_sol.run(snap).headline_metric > 0.0  # type: ignore[operator]
+
+    def test_no_data_returns_none_not_zero(self):
+        # An empty top_depositors_by_reserve dict (e.g., live snapshot
+        # without indexer data) must return headline=None, not 0.
+        snap = make_market_snapshot(n_healthy=1, n_at_risk=0, n_underwater=0)
+        snap_no_data = snap.model_copy(update={"top_depositors_by_reserve": {}})
+        det = DepositorExitShock(top_n=1)
+        res = det.run(snap_no_data)
+        assert res.headline_metric is None
+        assert "reason" in res.evidence
 
     def test_rejects_zero_top_n(self):
         with pytest.raises(ValueError, match="top_n"):

@@ -107,6 +107,58 @@ class TestReserveState:
         with pytest.raises(ValidationError):
             _sol_reserve(liquidation_threshold_pct=120)
 
+    def test_extra_forbid_rejects_rogue_field(self):
+        # v0.2.0: extra='forbid' on every model — catches typos in
+        # field names and stale/upgraded fixtures that ship unknown keys.
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
+            _sol_reserve(rogue_field="x")  # type: ignore[call-arg]
+
+
+class TestExtraForbidOnAllModels:
+    """v0.2.0: every public model rejects unknown fields."""
+
+    def test_obligation_deposit_rejects_rogue(self):
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
+            ObligationDeposit(  # type: ignore[call-arg]
+                reserve_address="r", deposited_amount=1, rogue="x"
+            )
+
+    def test_obligation_borrow_rejects_rogue(self):
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
+            ObligationBorrow(  # type: ignore[call-arg]
+                reserve_address="r", borrowed_amount=1, rogue="x"
+            )
+
+    def test_obligation_state_rejects_rogue(self):
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
+            ObligationState(  # type: ignore[call-arg]
+                obligation_address="ob",
+                owner="w",
+                slot=1,
+                rogue_field="x",
+            )
+
+    def test_kamino_market_snapshot_rejects_rogue(self):
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
+            KaminoMarketSnapshot(  # type: ignore[call-arg]
+                market_address="m",
+                slot=1,
+                timestamp=2,
+                reserves=[],
+                obligations=[],
+                rogue_field="x",
+            )
+
 
 class TestObligationState:
     def test_collateral_value_usd(self):

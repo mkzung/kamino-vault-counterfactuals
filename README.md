@@ -72,6 +72,17 @@ kvcf diff data/fixtures/main_market_2026-05-21.json \
          data/fixtures/main_market_2026-05-22.json
 ```
 
+### Historical replay over a fixtures directory
+
+```bash
+kvcf replay --fixtures-dir data/fixtures/ --out replay.json
+```
+
+Iterates every `*.json` in the directory in slot-ascending order, runs all
+six detectors on each snapshot, and emits a chronological JSON report (one
+entry per snapshot). Use this to track how detector outputs evolve across
+nightly snapshot dumps without writing a wrapper script.
+
 ### Programmatic
 
 ```python

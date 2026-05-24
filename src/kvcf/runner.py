@@ -80,6 +80,11 @@ def run_all_detectors(
     ]
 
 
-def summarize(results: list[DetectorResult]) -> dict[str, float]:
-    """Reduce to a {detector_name: headline_metric} dict for diffing."""
+def summarize(results: list[DetectorResult]) -> dict[str, float | None]:
+    """Reduce to a {detector_name: headline_metric} dict for diffing.
+
+    Values may be `None` when a detector could not compute its number
+    (e.g., DepositorExitShock with no top-depositor data). Diff consumers
+    must handle None — treating it as 0 silently hides missing inputs.
+    """
     return {r.name: r.headline_metric for r in results}

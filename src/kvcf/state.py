@@ -53,7 +53,7 @@ class ReserveState(BaseModel):
     conversion at fetch time.
     """
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     reserve_address: str = Field(..., description="Solana account address (base58)")
     slot: int = Field(..., ge=0, description="Solana slot")
@@ -134,7 +134,7 @@ class ReserveState(BaseModel):
 class ObligationDeposit(BaseModel):
     """One reserve deposit inside a borrower's obligation."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     reserve_address: str
     deposited_amount: int = Field(..., ge=0)
@@ -143,7 +143,7 @@ class ObligationDeposit(BaseModel):
 class ObligationBorrow(BaseModel):
     """One reserve borrow inside a borrower's obligation."""
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     reserve_address: str
     borrowed_amount: int = Field(..., ge=0)
@@ -158,7 +158,7 @@ class ObligationState(BaseModel):
     liquidation_threshold.
     """
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     obligation_address: str
     owner: str = Field(..., description="borrower wallet")
@@ -250,7 +250,7 @@ class KaminoMarketSnapshot(BaseModel):
     reserves and many obligations.
     """
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     market_address: str
     market_name: str = Field(default="", description="Human label, e.g. 'Main Market'")

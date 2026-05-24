@@ -61,12 +61,18 @@ def as_markdown(
     for r in results:
         lines.append(f"## {r.name}")
         lines.append("")
-        lines.append(f"- **Headline:** `{r.headline_metric:.4f}` ({r.headline_unit})")
+        headline = "n/a" if r.headline_metric is None else f"{r.headline_metric:.4f}"
+        lines.append(f"- **Headline:** `{headline}` ({r.headline_unit})")
         lines.append(f"- **Interpretation:** {r.interpretation}")
         lines.append("")
         lines.append("**Evidence:**")
         for k, v in r.evidence.items():
-            if isinstance(v, (int, float)):
+            # Exclude bool — `isinstance(True, int)` is True in Python, which
+            # silently formats booleans as "1" / "0" in the numeric branches
+            # below. Treat bools as their own scalar category.
+            if isinstance(v, bool):
+                lines.append(f"- `{k}`: `{v}`")
+            elif isinstance(v, (int, float)):
                 # Format numbers nicely
                 if isinstance(v, float):
                     lines.append(f"- `{k}`: {v:.6f}")

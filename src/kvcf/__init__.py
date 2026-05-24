@@ -25,7 +25,6 @@ from .detectors import (
 from .diff import MarketDiff, ReserveDiff, diff_snapshots, summarize_diff
 from .fetch import (
     DEFAULT_RPC,
-    KAMINO_MAIN_MARKET,
     fetch_market_snapshot,
     load_fixture,
     load_history,
@@ -42,7 +41,7 @@ from .state import (
     ReserveState,
 )
 
-__version__ = "0.1.1"
+__version__ = "0.2.0"
 
 __all__ = [
     # version
@@ -73,7 +72,6 @@ __all__ = [
     "summarize_diff",
     # fetch
     "DEFAULT_RPC",
-    "KAMINO_MAIN_MARKET",
     "fetch_market_snapshot",
     "load_fixture",
     "load_history",

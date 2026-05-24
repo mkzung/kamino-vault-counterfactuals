@@ -21,6 +21,9 @@ swap in a different source (Geyser stream, archival node, indexer).
 from __future__ import annotations
 
 import json
+import logging
+import os
+import time
 from pathlib import Path
 
 import httpx
@@ -31,14 +34,21 @@ from .state import (
     ReserveState,
 )
 
+logger = logging.getLogger(__name__)
+
 DEFAULT_RPC = "https://api.mainnet-beta.solana.com"
-# Kamino Main Market PDA on Solana mainnet. The canonical value is
-# documented in the Kamino docs at https://docs.kamino.finance — set this
-# via the `market_address` argument to `fetch_market_snapshot()` rather
-# than relying on a hardcoded default, since Kamino has rotated market
-# PDAs in the past and may again. The empty default forces the caller to
-# pass the address explicitly.
-KAMINO_MAIN_MARKET = ""
+# Kamino Main Market PDA on Solana mainnet.
+#
+# Intentionally `None` — there is NO hardcoded canonical value. Callers
+# must pass the market PDA explicitly, either by:
+#   - setting the `KAMINO_MAIN_MARKET` environment variable, OR
+#   - passing `market_address=` to `fetch_market_snapshot()`.
+#
+# Rationale: Kamino has rotated market PDAs in the past, and we will not
+# ship a "default" that risks silently pointing at a stale or wrong
+# market. Look up the current Main Market PDA from Kamino docs
+# (https://docs.kamino.finance) at fetch time.
+KAMINO_MAIN_MARKET: str | None = os.environ.get("KAMINO_MAIN_MARKET") or None
 
 
 def load_fixture(path: str | Path) -> KaminoMarketSnapshot:
@@ -48,8 +58,63 @@ def load_fixture(path: str | Path) -> KaminoMarketSnapshot:
     return KaminoMarketSnapshot.model_validate(raw)
 
 
+def _rpc_post_with_retry(
+    rpc_url: str,
+    payload: dict[str, object],
+    *,
+    timeout_s: float = 15.0,
+    max_attempts: int = 4,
+    backoff_initial_s: float = 1.0,
+) -> dict[str, object]:
+    """POST a JSON-RPC payload with exponential backoff on 429 / 5xx.
+
+    Public Solana RPC nodes (api.mainnet-beta.solana.com) rate-limit
+    aggressively. Helius / Triton paid endpoints occasionally 5xx during
+    cluster restarts. Backoff: 1s, 2s, 4s — total worst-case ~7s before
+    raising. Network errors (httpx.RequestError) also retry.
+    """
+    last_exc: Exception | None = None
+    backoff = backoff_initial_s
+    for attempt in range(max_attempts):
+        try:
+            with httpx.Client(timeout=timeout_s) as client:
+                resp = client.post(rpc_url, json=payload)
+            retryable = resp.status_code == 429 or 500 <= resp.status_code < 600
+            if retryable and attempt < max_attempts - 1:
+                logger.warning(
+                    "RPC %s returned %d (attempt %d/%d); retrying in %.1fs",
+                    rpc_url, resp.status_code, attempt + 1, max_attempts, backoff,
+                )
+                time.sleep(backoff)
+                backoff *= 2
+                continue
+            resp.raise_for_status()
+            data: dict[str, object] = resp.json()
+            return data
+        except httpx.RequestError as exc:
+            last_exc = exc
+            if attempt < max_attempts - 1:
+                logger.warning(
+                    "RPC %s request error %r (attempt %d/%d); retrying in %.1fs",
+                    rpc_url, exc, attempt + 1, max_attempts, backoff,
+                )
+                time.sleep(backoff)
+                backoff *= 2
+                continue
+            raise
+    # Shouldn't reach here, but be explicit.
+    if last_exc is not None:
+        raise last_exc
+    raise RuntimeError(f"RPC {rpc_url} failed after {max_attempts} attempts")
+
+
 def load_history(dir_path: str | Path) -> list[KaminoMarketSnapshot]:
-    """Read every *.json in dir_path/snapshots as one history."""
+    """Read every *.json in dir_path/snapshots as one history.
+
+    Bad fixtures are logged at WARNING and skipped rather than aborting
+    the whole load — a single corrupt file shouldn't take down a
+    multi-snapshot replay.
+    """
     p = Path(dir_path)
     snapshots_dir = p if p.name == "snapshots" else p / "snapshots"
     if not snapshots_dir.is_dir():
@@ -58,7 +123,8 @@ def load_history(dir_path: str | Path) -> list[KaminoMarketSnapshot]:
     for f in sorted(snapshots_dir.glob("*.json")):
         try:
             out.append(load_fixture(f))
-        except Exception:
+        except Exception as exc:
+            logger.warning("load_history: skipping %s — %s", f, exc)
             continue
     return out
 
@@ -118,20 +184,29 @@ def fetch_market_snapshot(
         "method": "getAccountInfo",
         "params": [market_address, {"encoding": "base64", "commitment": "confirmed"}],
     }
-    with httpx.Client(timeout=timeout_s) as client:
-        resp = client.post(rpc_url, json=payload)
-        resp.raise_for_status()
-        body = resp.json()
+    body = _rpc_post_with_retry(rpc_url, payload, timeout_s=timeout_s)
 
-    result = body.get("result", {})
-    value = result.get("value") or {}
+    # Surface JSON-RPC errors with full diagnostic — silent swallowing of
+    # `body["error"]` leads to confusing downstream KeyErrors.
+    err = body.get("error") if isinstance(body, dict) else None
+    if isinstance(err, dict):
+        raise RuntimeError(
+            f"Solana RPC error from {rpc_url}: "
+            f"code={err.get('code')} message={err.get('message')!r} data={err.get('data')!r}"
+        )
+
+    raw_result = body.get("result", {}) if isinstance(body, dict) else {}
+    result: dict[str, object] = raw_result if isinstance(raw_result, dict) else {}
+    raw_value = result.get("value") or {}
+    value: dict[str, object] = raw_value if isinstance(raw_value, dict) else {}
     if not value:
         raise ValueError(f"Market account {market_address} not found")
 
     # Stub: return an empty snapshot whose only useful field is the slot.
     # Real users supply a fixture or indexer. The stub is here so the
     # CLI can `kvcf live` without exploding.
-    slot = int(result.get("context", {}).get("slot", 0))
+    ctx = result.get("context", {})
+    slot = int(ctx.get("slot", 0)) if isinstance(ctx, dict) else 0
     return KaminoMarketSnapshot(
         market_address=market_address,
         market_name="(stub — supply fixture or indexer for real data)",
@@ -168,7 +243,6 @@ def _parse_obligation_account(b64: str, address: str) -> ObligationState:
 
 
 __all__ = [
-    "KAMINO_MAIN_MARKET",
     "DEFAULT_RPC",
     "fetch_market_snapshot",
     "load_fixture",

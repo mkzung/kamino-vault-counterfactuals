@@ -14,8 +14,8 @@ authors:
     affiliation: "Stanford GSB Venture Capital Initiative"
 repository-code: "https://github.com/mkzung/kamino-vault-counterfactuals"
 license: MIT
-version: 0.1.1
-date-released: 2026-05-21
+version: 0.2.0
+date-released: 2026-05-25
 keywords:
   - DeFi
   - Solana

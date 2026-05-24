@@ -5,6 +5,7 @@ or curator email distribution.
 from __future__ import annotations
 
 import html
+import os
 from datetime import datetime, timezone
 
 from .detectors import DetectorResult
@@ -56,8 +57,10 @@ _TAIL = """
 """
 
 
-def _severity(metric: float, unit: str) -> str:
+def _severity(metric: float | None, unit: str) -> str:
     """Map metric → CSS severity class (default for fractional metrics)."""
+    if metric is None:
+        return ""
     if "fraction" in unit or "utilization" in unit:
         if metric > 0.20:
             return "danger"
@@ -66,14 +69,39 @@ def _severity(metric: float, unit: str) -> str:
     return ""
 
 
+def _resolve_now(now: datetime | None) -> datetime:
+    """Choose the timestamp for HTML report rendering.
+
+    Precedence (matches the lre-refusal-eval pattern):
+      1. Explicit `now` argument (test seam).
+      2. `SOURCE_DATE_EPOCH` environment variable (reproducible-builds convention).
+      3. `datetime.now(UTC)`.
+    """
+    if now is not None:
+        return now
+    sde = os.environ.get("SOURCE_DATE_EPOCH")
+    if sde:
+        try:
+            return datetime.fromtimestamp(int(sde), tz=timezone.utc)
+        except (ValueError, OSError):
+            pass
+    return datetime.now(tz=timezone.utc)
+
+
 def as_html(
     results: list[DetectorResult],
     *,
     title: str = "Kamino Vault Counterfactuals Report",
     subtitle: str | None = None,
+    now: datetime | None = None,
 ) -> str:
-    """Render results as a standalone HTML document."""
-    ts = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    """Render results as a standalone HTML document.
+
+    Args:
+      now: optional fixed timestamp for deterministic output (test seam).
+        If None, uses `SOURCE_DATE_EPOCH` env var when set, else wall clock.
+    """
+    ts = _resolve_now(now).strftime("%Y-%m-%d %H:%M UTC")
     body_parts: list[str] = [_HEAD.replace("{title}", html.escape(title))]
     body_parts.append(f'<h1>{html.escape(title)}</h1>')
     sub = subtitle or f"Generated {ts}"
@@ -82,10 +110,11 @@ def as_html(
     for r in results:
         sev_class = _severity(r.headline_metric, r.headline_unit)
         sev_css = f" {sev_class}" if sev_class else ""
+        headline_text = "n/a" if r.headline_metric is None else f"{r.headline_metric:.4f}"
         body_parts.append('<div class="detector">')
         body_parts.append(f'<h2>{html.escape(r.name)}</h2>')
         body_parts.append(
-            f'<span class="headline{sev_css}">{r.headline_metric:.4f}</span>'
+            f'<span class="headline{sev_css}">{headline_text}</span>'
             f'<span class="unit">{html.escape(r.headline_unit)}</span>'
         )
         body_parts.append(f'<div class="interp">{html.escape(r.interpretation)}</div>')
@@ -103,7 +132,11 @@ def _format_evidence(d: dict[str, object]) -> str:
     """Render evidence dict as a pretty-printed string."""
     lines: list[str] = []
     for k, v in d.items():
-        if isinstance(v, (int, float)):
+        # Exclude bool first — `isinstance(True, int)` is True in Python,
+        # which would otherwise format booleans as "1" / "0".
+        if isinstance(v, bool):
+            lines.append(f"{k}: {v}")
+        elif isinstance(v, (int, float)):
             if isinstance(v, float):
                 lines.append(f"{k}: {v:.6f}")
             else:

@@ -11,7 +11,7 @@
       "mint": "fab390771afdf36d58a0c02787b74212d764c324ed8",
       "symbol": "SOL",
       "mint_decimals": 9,
-      "available_amount": 80000000000000,
+      "available_amount": 55000000000000,
       "borrowed_amount": 40000000000000,
       "accumulated_protocol_fees": 0,
       "accumulated_referrer_fees": 0,
@@ -22,7 +22,7 @@
       "max_liquidatable_close_factor_pct": 20,
       "deposit_limit": 0,
       "borrow_limit": 0,
-      "oracle_price_value": 15000000000,
+      "oracle_price_value": 12000000000,
       "oracle_price_exp": -8,
       "oracle_last_update_slot": 250000500,
       "oracle_source": "pyth"
@@ -222,15 +222,15 @@
     "SyntheticSoLReserve1111111111111111111111111": [
       [
         "6a8520d7570ade3a03b9b2e25105a9cb86fd66f765e",
-        30000000000000
+        40000000000000
       ],
       [
         "47bfaf94fe7c891af72f60efc84e89f781c707f886a",
-        10000000000000
+        7000000000000
       ],
       [
         "ed86d77529f3b8325dfadc26ab21e04402e52fc3413",
-        5000000000000
+        3000000000000
       ]
     ],
     "SyntheticUSDCReserve111111111111111111111111": [

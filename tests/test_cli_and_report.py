@@ -190,6 +190,153 @@ def test_as_json_emits_strict_parseable_when_metric_is_inf():
     assert parsed[0]["evidence"]["normal_value"] == 0.5
 
 
+def test_as_html_deterministic_with_now_seam():
+    """v0.2.0: as_html accepts a `now` argument for reproducible output."""
+    from datetime import datetime, timezone
+
+    snap = make_market_snapshot()
+    results = run_all_detectors(snap)
+    fixed = datetime(2026, 5, 25, 12, 0, tzinfo=timezone.utc)
+    a = as_html(results, now=fixed)
+    b = as_html(results, now=fixed)
+    assert a == b
+    assert "2026-05-25 12:00 UTC" in a
+
+
+def test_as_html_honors_source_date_epoch(monkeypatch):
+    """v0.2.0: as_html honors SOURCE_DATE_EPOCH for reproducible-builds."""
+    snap = make_market_snapshot()
+    results = run_all_detectors(snap)
+    # 2026-05-25 00:00:00 UTC
+    monkeypatch.setenv("SOURCE_DATE_EPOCH", "1779667200")
+    h = as_html(results)
+    assert "2026-05-25 00:00 UTC" in h
+
+
+# ──────────────────────────────────────────────────────────────────────
+# CLI replay (v0.2.0 — historical replay over a fixtures dir)
+# ──────────────────────────────────────────────────────────────────────
+
+
+def test_cli_replay_emits_chronological_report(tmp_path, capsys):
+    # Two synthetic snapshots, slot 100 and 200; write to a fixtures dir.
+    pre = make_market_snapshot(slot=100)
+    post = make_market_snapshot(slot=200)
+    fdir = tmp_path / "fix"
+    fdir.mkdir()
+    (fdir / "a.json").write_text(pre.model_dump_json())
+    (fdir / "b.json").write_text(post.model_dump_json())
+
+    out_path = tmp_path / "replay.json"
+    rc = main(["replay", "--fixtures-dir", str(fdir), "--out", str(out_path)])
+    assert rc == 0
+    payload = json.loads(out_path.read_text())
+    assert payload["n_snapshots"] == 2
+    assert payload["snapshots"][0]["slot"] == 100
+    assert payload["snapshots"][1]["slot"] == 200
+    # Each snapshot must have all 6 detector results
+    for s in payload["snapshots"]:
+        assert len(s["results"]) == 6
+        names = [r["name"] for r in s["results"]]
+        assert names == [
+            "OracleStalenessReplay",
+            "CollateralCascade",
+            "DepositorExitShock",
+            "UtilizationBandBreach",
+            "LiquidationLatency",
+            "LTVDistributionStress",
+        ]
+
+
+def test_cli_replay_runs_against_bundled_fixtures(capsys):
+    """Sanity check: shipped fixtures parse + run end-to-end through replay."""
+    import pathlib
+
+    repo_root = pathlib.Path(__file__).resolve().parents[1]
+    fdir = repo_root / "data" / "fixtures"
+    rc = main(["replay", "--fixtures-dir", str(fdir)])
+    out = capsys.readouterr().out
+    assert rc == 0
+    payload = json.loads(out)
+    assert payload["n_snapshots"] >= 2
+    # Slots must be strictly ascending (chronological)
+    slots = [s["slot"] for s in payload["snapshots"]]
+    assert slots == sorted(slots)
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Bundled fixtures must always parse — protects against schema drift.
+# ──────────────────────────────────────────────────────────────────────
+
+
+def test_all_bundled_fixtures_parse():
+    """Every *.json in data/fixtures must load as KaminoMarketSnapshot.
+
+    A failing fixture means either: (a) the schema changed without
+    updating the bundled examples, or (b) someone hand-edited a fixture
+    into invalid shape. Either way, the README's "load_fixture()"
+    examples would silently break for users — CI catches it here.
+    """
+    import pathlib
+
+    from kvcf.fetch import load_fixture
+
+    repo_root = pathlib.Path(__file__).resolve().parents[1]
+    fdir = repo_root / "data" / "fixtures"
+    files = sorted(fdir.glob("*.json"))
+    assert files, "no bundled fixtures found in data/fixtures/"
+    for f in files:
+        snap = load_fixture(f)
+        assert snap.market_address
+        assert snap.slot >= 0
+
+
+def test_fixtures_have_meaningful_diff():
+    """v0.2.0: the two bundled fixtures must show non-trivial deltas so
+    the README diff example is not a no-op.
+    """
+    import pathlib
+
+    from kvcf.diff import diff_snapshots
+    from kvcf.fetch import load_fixture
+
+    repo_root = pathlib.Path(__file__).resolve().parents[1]
+    fdir = repo_root / "data" / "fixtures"
+    pre = load_fixture(fdir / "main_market_2026-05-21.json")
+    post = load_fixture(fdir / "main_market_2026-05-22.json")
+    md = diff_snapshots(pre, post)
+    # At least one reserve must show a non-zero price delta.
+    price_deltas = [abs(rd.price_delta_pct) for rd in md.reserves]
+    assert max(price_deltas) > 0.0
+    # Total supply USD must differ (we cut SOL liquidity + price).
+    assert md.supply_delta_usd != 0.0
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Synthetic addresses must be real base58 (v0.2.0 — P1 #14).
+# ──────────────────────────────────────────────────────────────────────
+
+
+def test_synthetic_mint_addresses_are_valid_base58():
+    import base58
+
+    snap = make_market_snapshot(n_healthy=2, n_at_risk=1, n_underwater=0)
+    for r in snap.reserves:
+        # The static SOL_RESERVE / USDC_RESERVE etc. are placeholders
+        # that already pass base58 (they use the base58 alphabet). What
+        # we MUST verify is the generated mint addresses round-trip
+        # cleanly through b58decode.
+        base58.b58decode(r.mint)
+        assert 40 <= len(r.mint) <= 48
+    for ob in snap.obligations:
+        base58.b58decode(ob.obligation_address)
+        base58.b58decode(ob.owner)
+        assert 40 <= len(ob.obligation_address) <= 48
+    for _, deps in snap.top_depositors_by_reserve.items():
+        for addr, _amt in deps:
+            base58.b58decode(addr)
+
+
 def test_collateral_cascade_skips_missing_reserve_gracefully():
     """An obligation can reference a reserve that's been delisted between
     snapshot dumps. The detector should treat that bucket's available
